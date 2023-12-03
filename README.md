@@ -40,6 +40,7 @@ This is a simple chat application built with NestJS and MongoDB. The application
 4. **Access the chat app:**
 
     Open your web browser and navigate to [http://localhost:8080](http://localhost:8080) to access the chat application.
+    To See the backend api documentation you can go to [http://localhost:3000/api-docs](http://localhost:3000/api-docs).
 
 ## Stopping the App
 
