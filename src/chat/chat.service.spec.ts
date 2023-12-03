@@ -1,73 +1,91 @@
-// import { Test, TestingModule } from '@nestjs/testing';
-// import { ChatGateway } from './chat.gateway';
-// import { ChatService } from './chat.service';
-// import { Message } from './chat.model';
-// import { getModelToken } from '@nestjs/mongoose';
+import { Test, TestingModule } from '@nestjs/testing';
+import { ChatGateway } from './chat.gateway';
+import { ChatService } from './chat.service';
+import { Message, Room } from './chat.model';
+import { Model } from 'mongoose';
 
-// describe('ChatGateway', () => {
-//   let gateway: ChatGateway;
-//   let service: ChatService;
-//   let moduleFixture: TestingModule;
+const mockRoom = {
+    name: 'holand',
+    creatorId: "c23",
+    hostId: "c23",
+    participants: [],
+};
+const mockMessage = {
+    content: 'Hello world!',
+    createdAt: new Date(),
+    sender: "igdfsa3",
+    roomId: "rsdaf3"
+};
 
-//   beforeEach(async () => {
-//     moduleFixture = await Test.createTestingModule({
-//       providers: [
-//         ChatGateway,
-//         ChatService,
-//         {
-//             provide: getModelToken('Room'), 
-//             useValue: {},
-//           },
-//           {
-//             provide: getModelToken('Message'), 
-//             useValue: {},
-//           },
-//       ],
-//     }).compile();
+describe('ChatGateway', () => {
+  let gateway: ChatGateway;
+  let service: ChatService;
+  let module: TestingModule;
+  let roomModel: Model<Room>;
+  let messageModel: Model<Message>;
 
-//     gateway = moduleFixture.get<ChatGateway>(ChatGateway);
-//     service = moduleFixture.get<ChatService>(ChatService);
-//   });
+  beforeEach(async () => {
+    module = await Test.createTestingModule({
+      providers: [
+        ChatService,
+        {
+            provide: 'RoomModel',
+            useValue: {
+                new: jest.fn().mockResolvedValue(mockRoom),
+                constructor: jest.fn().mockResolvedValue(mockRoom),
+                find: jest.fn(),
+                create: jest.fn(),
+                save: jest.fn(),
+                exec: jest.fn(),
+            },
+        },
+        {
+            provide: 'MessageModel',
+            useValue: {
+                new: jest.fn().mockResolvedValue(mockMessage),
+                constructor: jest.fn().mockResolvedValue(mockMessage),
+                find: jest.fn(),
+                create: jest.fn(),
+                save: jest.fn(),
+                exec: jest.fn(),
+            },
+        },
+      ],
+    }).compile();
 
-//   afterEach(async () => {
-//     await moduleFixture.close();
-//   });
+    service = module.get<ChatService>(ChatService);
+    roomModel = module.get<Model<Room>>('RoomModel');
+    messageModel = module.get<Model<Message>>('MessageModel');
+  });
 
-//   it('should handle joinRoom event', async () => {
-//     const mockClient = { join: jest.fn() } as any;
-//     const emitSpy = jest.spyOn(gateway.server, 'to').mockReturnThis();
+  it('should createRoom', async () => {
+    jest.spyOn(roomModel, 'create').mockImplementationOnce(() =>
+        Promise.resolve({
+            name: 'holand',
+            creatorId: "c23",
+            hostId: "c23",
+            participants: [],
+        } as any),
+    );
 
-//     await gateway.handleJoinRoom('mockRoom', 'mockUsername', mockClient);
+    const newRoom = await service.createRoom("holand", "c23")
+    expect(newRoom).toEqual(mockRoom)
+  });
 
-//     expect(mockClient.join).toHaveBeenCalledWith('mockRoom');
-//     expect(emitSpy).toHaveBeenCalledWith('mockRoom');
-//     expect(emitSpy).toHaveBeenCalledWith('joinedRoom', 'mockUsername joined mockRoom');
-//   });
+    it('should get empty Rooms', async () => {
+        jest.spyOn(roomModel, 'find').mockReturnValue({
+            exec: jest.fn().mockResolvedValueOnce([]),
+        } as any);
+        const rooms = await service.getRooms();
+        expect(rooms).toEqual([]);
+    });
 
-//   it('should handle sendMessage event', async () => {
-//     const saveMessageSpy = jest.spyOn(service, 'addMessageToRoom').mockResolvedValueOnce({ _id: 'mockMessageId', content: 'Hello!', sender: 'Mock Sender', roomId: 'mockRoomId' } as Message);
-//     const emitSpy = jest.spyOn(gateway.server, 'to').mockReturnThis();
+    it('should get empty Messages', async () => {
+        jest.spyOn(messageModel, 'find').mockReturnValue({
+            exec: jest.fn().mockResolvedValueOnce([]),
+        } as any);
+        const cats = await service.getRoomMessages("holand");
+        expect(cats).toEqual([]);
+    });
 
-//     await gateway.handleSendMessage('Hello!', 'mockRoomId', 'Mock Sender');
-
-//     expect(saveMessageSpy).toHaveBeenCalledWith('mockRoomId', 'Hello!', 'Mock Sender');
-//     expect(emitSpy).toHaveBeenCalledWith('mockRoomId');
-//     expect(emitSpy).toHaveBeenCalledWith('message', { _id: 'mockMessageId', content: 'Hello!', sender: 'Mock Sender', roomId: 'mockRoomId' });
-//   });
-
-//   // Add more tests for other methods or events...
-
-//   // Example test for another method or event
-// //   it('should handle another event correctly', async () => {
-// //     // Mock WebSocket connection.
-// //     const mockClient = {
-// //       join: jest.fn(),
-// //     };
-
-// //     // Call another method or event.
-// //     await gateway.handleAnotherEvent(/* provide necessary parameters */);
-
-// //     // Expect the desired behavior.
-// //     // Add appropriate expectations based on the behavior of handleAnotherEvent.
-// //   });
-// });
+});

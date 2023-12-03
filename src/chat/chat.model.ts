@@ -25,6 +25,12 @@ export class Room extends Document {
   @Prop({ required: true, unique: true })
   name: string;
 
+  @Prop({ required: true })
+  creatorId: string;
+
+  @Prop({ required: true })
+  hostId: string;
+
   @Prop({ type: [{ type: 'ObjectId', ref: 'User' }] })
   participants: string[];
 }

@@ -12,11 +12,12 @@ export class ChatService {
     @InjectModel(Message.name) private readonly MessageModel: Model<Message>,
   ) {}
 
-  async createRoom(name: string): Promise<Room> {
+  async createRoom(name: string, hostId: string): Promise<Room> {
     //TODO: add the creator to be the participants
-    const room = new this.RoomModel({ name, participants: [] });
-    return await room.save();
+    return this.RoomModel.create({ name, creatorId: hostId, hostId: hostId ,participants: [hostId] });
   }
+
+  // join room 
 
   async getRooms(): Promise<Room[]> {
     return await this.RoomModel.find().exec();

@@ -1,8 +1,9 @@
 // src/chat/chat.controller.ts
 
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiResponse, ApiParam, ApiBody, ApiProperty } from '@nestjs/swagger'; // Add Swagger decorators
+import { Controller, Request, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiResponse, ApiParam, ApiBody, ApiProperty, ApiBearerAuth } from '@nestjs/swagger'; // Add Swagger decorators
 import { ChatService } from './chat.service';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 export class CreateRoomDto {
   @ApiProperty()
@@ -17,6 +18,8 @@ export class CreateMessageDto {
   sender: string;
 }
 
+@ApiBearerAuth()
+@UseGuards(AuthGuard)
 @ApiTags('Chat') // Add Swagger tag
 @Controller('chat')
 export class ChatController {
@@ -31,9 +34,9 @@ export class ChatController {
   @Post('rooms')
   @ApiResponse({ status: 201, description: 'Create a new chat room' })
   @ApiBody({ type: CreateRoomDto, description: 'Name of the chat room' })
-  async createChatRoom(@Body() body: CreateRoomDto) {
+  async createChatRoom(@Request() req, @Body() body: CreateRoomDto) {
     const { name } = body;
-    return this.chatService.createRoom(name);
+    return this.chatService.createRoom(name, req.user.sub);
   }
 
   @Post('rooms/:roomId/messages')

@@ -21,3 +21,12 @@ services:
     environment:
       MONGO_URI: 'mongodb://mongo:27017/chat-app'
 
+  web:
+    image: nginx:alpine
+    volumes:
+      - ./client:/usr/share/nginx/html
+    ports:
+      - "8080:80"
+    depends_on:
+      - app
+

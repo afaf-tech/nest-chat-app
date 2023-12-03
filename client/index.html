@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <style>
+        /* Add your styles here */
+    </style>
+</head>
+<body>
+    <!-- Landing Page -->
+    <div id="landing-page">
+        <h2>Welcome to Chat App!</h2>
+        <button id="login-option">Login</button>
+        <button id="register-option">Register</button>
+    </div>
+
+    <!-- Register Page -->
+    <div id="register-page" style="display:none;">
+        <h2>Register</h2>
+        <form id="register-form">
+            <label for="register-username">Username:</label>
+            <input type="text" id="register-username" required>
+            <label for="register-password">Password:</label>
+            <input type="password" id="register-password" required>
+            <button type="submit">Register</button>
+        </form>
+    </div>
+
+    <!-- Login Page -->
+    <div id="login-page" style="display:none;">
+        <h2>Login</h2>
+        <form id="login-form">
+            <label for="login-username">Username:</label>
+            <input type="text" id="login-username" required>
+            <label for="login-password">Password:</label>
+            <input type="password" id="login-password" required>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+
+    <!-- Chat Rooms Page -->
+    <div id="chat-rooms-page" style="display:none;">
+        <h2>Chat Rooms</h2>
+        <ul id="chat-rooms-list">
+            <!-- Display a list of chat rooms -->
+        </ul>
+        <button id="create-room-btn">Create Room</button>
+        <button id="logout-button">Logout</button>
+    </div>
+
+    <!-- Chat Room Messages Page -->
+    <div id="chat-room-messages-page" style="display:none;">
+        <h2 id="chat-room-title">Chat Room Messages</h2>
+        <button id="back-to-rooms-button">Back to Rooms</button> 
+        <ul id="chat-room-messages-list">
+            <!-- Display a list of messages in a chat room -->
+        </ul>
+        <form id="send-message-form">
+            <label for="message-content">Message:</label>
+            <input type="text" id="message-content" required>
+            <button type="submit">Send Message</button>
+        </form>
+    </div>
+
+    <script src="https://cdn.socket.io/4.1.3/socket.io.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const serverHost = "http://localhost:3000"; // Update with your server URL
+            const landingPage = document.getElementById('landing-page');
+            const loginOption = document.getElementById('login-option');
+            const registerOption = document.getElementById('register-option');
+            const registerForm = document.getElementById('register-form');
+            const loginForm = document.getElementById('login-form');
+            const chatRoomsPage = document.getElementById('chat-rooms-page');
+            const createRoomBtn = document.getElementById('create-room-btn');
+            const chatRoomMessagesPage = document.getElementById('chat-room-messages-page');
+            const sendMessageForm = document.getElementById('send-message-form');
+            const chatRoomsList = document.getElementById('chat-rooms-list');
+            const chatRoomMessagesList = document.getElementById('chat-room-messages-list');
+            const logoutButton = document.getElementById('logout-button'); // Added logout button
+            const backToRoomsButton = document.getElementById('back-to-rooms-button');
+            const messageContentInput = document.getElementById('message-content');
+
+
+            const socket = io(`${serverHost}/chat`,
+            {
+                transportOptions: {
+                    polling: {
+                        extraHeaders: {
+                            Authorization: 'Bearer ' + getAuthToken(), // 'Bearer h93t4293t49jt34j9rferek...'
+                        }
+                    }
+                }
+            });
+
+            // Add event listener to handle incoming messages from the server
+            socket.on('message', function(data) {
+                const messageItem = document.createElement('li');
+                messageItem.innerHTML = `<strong>${data.sender}:</strong> ${data.content}`;
+                chatRoomMessagesList.appendChild(messageItem);
+            });
+
+            function setProfile(userProfile) {
+                localStorage.setItem('profile', JSON.stringify(userProfile));
+                
+            }
+
+            function getProfile() {
+                return JSON.parse(localStorage.getItem('profile'));;
+            }
+
+            function setAuthToken(token) {
+                localStorage.setItem('accessToken', token);
+            }
+
+            function getAuthToken() {
+                return localStorage.getItem('accessToken');
+            }
+
+            function removeAuthToken() {
+                localStorage.removeItem('accessToken');
+            }
+
+            function getRoomId() {
+                return localStorage.getItem('roomId')
+            }
+
+            function setRoomId(roomId) {
+                localStorage.setItem('roomId', roomId);
+            }
+
+            function showChatRooms() {
+                showPage('chat-rooms-page');
+            }
+
+            function fetchWithAuth(url, options) {
+                const token = getAuthToken();
+                if (token) {
+                    options.headers = {
+                        ...options.headers,
+                        Authorization: `Bearer ${token}`
+                    };
+                }
+                return fetch(`${serverHost}${url}`, options);
+            }
+
+            function showPage(pageId) {
+                const pages = ['landing-page', 'register-page', 'login-page', 'chat-rooms-page', 'chat-room-messages-page'];
+                pages.forEach(page => {
+                    const displayStyle = page === pageId ? 'block' : 'none';
+                    document.getElementById(page).style.display = displayStyle;
+                });
+            }
+
+            backToRoomsButton.addEventListener('click', function() {
+                socket.disconnect()
+                showChatRooms();
+            });
+
+            function showLogin() {
+                showPage('login-page');
+            }
+
+            function showRegister() {
+                showPage('register-page');
+            }
+
+            // Add event listeners
+            landingPage.addEventListener('click', function(event) {
+                    if (event.target === loginOption) {
+                        showLogin();
+                    } else if (event.target === registerOption) {
+                        showRegister();
+                    }
+                });
+
+            logoutButton.addEventListener('click', function() {
+                // Logout functionality
+                removeAuthToken();
+                showPage('landing-page');
+            });
+
+            registerForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const username = document.getElementById('register-username').value;
+                const password = document.getElementById('register-password').value;
+                fetchWithAuth('/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Handle successful registration
+                    console.log('Registration successful:', data);
+                    showLogin();
+                })
+                .catch(error => {
+                    console.error('Registration error:', error);
+                });
+            });
+
+            loginForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const username = document.getElementById('login-username').value;
+                const password = document.getElementById('login-password').value;
+                fetchWithAuth('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    if (data.access_token) {
+                        setAuthToken(data.access_token);
+                        // Handle successful login
+                        console.log('Login successful:', data);
+                        showPage('chat-rooms-page');
+                        fetchChatRooms();
+                        fetchProfile();
+                    }else {
+                        console.log(data);
+                        alert(data.message)
+                    }
+                    
+                })
+                .catch(error => {
+                    console.error('Login error:', error);
+                });
+            });
+
+            createRoomBtn.addEventListener('click', function() {
+                const roomName = prompt('Enter the name of the new chat room:');
+                if (roomName) {
+                    fetchWithAuth('/chat/rooms', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ name: roomName }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Handle successful room creation
+                        console.log('Room created:', data);
+                        fetchChatRooms();
+                    })
+                    .catch(error => {
+                        console.error('Room creation error:', error);
+                    });
+                }
+            });
+
+            function fetchChatRooms() {
+                fetchWithAuth('/chat/rooms', {
+                    method: "GET",
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Display the list of chat rooms
+                    const roomsHTML = data.map(room => `<li data-room-id="${room._id}">${room.name}</li>`).join('');
+                    chatRoomsList.innerHTML = roomsHTML;
+                })
+                .catch(error => {
+                    console.error('Chat rooms fetching error:', error);
+                });
+            }
+
+            function fetchProfile() {
+                fetchWithAuth('/auth/profile', {
+                    method: "GET",
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    setProfile(data)
+                })
+                .catch(error => {
+                    console.error('Profile fetching error:', error);
+                });
+            }
+
+            chatRoomsList.addEventListener('click', function(event) {
+                if (event.target.tagName === 'LI') {
+                    const roomId = event.target.dataset.roomId;
+                    const roomName = event.target.innerText;
+                    setRoomId(roomId)
+                    showChatRoomMessagesPage(roomName);
+                }
+            });
+
+            function showChatRoomMessagesPage(roomName) {
+                const roomId = getRoomId() 
+                fetchWithAuth(`/chat/rooms/${roomId}/messages`, {
+                    method: "GET",
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Display the chat room messages
+                    const messagesHTML = data.map(message => `<li><strong>${message.sender}:</strong> ${message.content}</li>`).join('');
+                    chatRoomMessagesList.innerHTML = messagesHTML;
+                    document.getElementById('chat-room-title').textContent = `Chat Room Messages (${roomName})`;
+                    showPage('chat-room-messages-page');
+                })
+                .catch(error => {
+                    console.error('Chat room messages fetching error:', error);
+                });
+
+                socket.on('connect', () => {
+                    socket.emit('joinRoom', { room: roomId, socketId: socket.id });
+                })
+
+                socket.connect()
+            }
+
+            sendMessageForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const messageContent = messageContentInput.value;
+                const roomId = getRoomId();
+                const user = getProfile();
+                // Emit a 'sendMessage' event to the server
+                socket.emit('sendMessage', { message: messageContent, room: roomId, username: user.username });
+
+                // Clear the input field
+                messageContentInput.value = '';
+            });
+
+            // Check if the user is already authenticated
+            if (getAuthToken()) {
+                showPage('chat-rooms-page');
+                fetchChatRooms();
+            } else {
+                showPage('landing-page');
+            }
+
+            socket.on('joinedRoom', function(message) {
+                // Display the 'joinedRoom' message in the chat room
+                const joinedRoomItem = document.createElement('li');
+                joinedRoomItem.textContent = message;
+                chatRoomMessagesList.appendChild(joinedRoomItem);
+            });
+
+            // TODO: 
+            // 1. sender id
+            // 2. why the message from history not shown--- done
+            // 3. ensure multiple people doing chat in the room. 
+            // 4. ensure that sender from the other room can't receive msg
+        });
+    </script>
+</body>
+</html>
